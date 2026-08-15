@@ -1,0 +1,376 @@
+{
+  "tesserae_compat": "1.x",
+  "name": "Wildlife Nearby",
+  "version": "0.1.0",
+  "kind": "widget",
+  "description": "What has actually been seen around this panel: the species most often recorded nearby, or the ones spotted most recently, from iNaturalist's public observations. Filter by radius and by group — birds, mammals, insects, plants, fungi. No API key.",
+  "icon": "ph-bird",
+  "supports": {
+    "sizes": [
+      "xs",
+      "sm",
+      "md",
+      "lg"
+    ]
+  },
+  "requires": [
+    "network:api.inaturalist.org",
+    "network:inaturalist-open-data.s3.amazonaws.com",
+    "network:static.inaturalist.org"
+  ],
+  "render": {
+    "needs_network": true
+  },
+  "cell_options": [
+    {
+      "name": "location",
+      "type": "location_search",
+      "label": "Location",
+      "help": "Where to look. Falls back to the app-level location in Settings when empty.",
+      "default": ""
+    },
+    {
+      "name": "mode",
+      "type": "select",
+      "label": "Show",
+      "default": "recent",
+      "help": "Recently spotted changes almost daily. Most recorded is the steady picture of what lives here.",
+      "choices": [
+        {
+          "value": "recent",
+          "label": "Recently spotted"
+        },
+        {
+          "value": "common",
+          "label": "Most recorded"
+        }
+      ]
+    },
+    {
+      "name": "layout",
+      "type": "select",
+      "label": "Layout",
+      "default": "list",
+      "help": "Photo and gallery pull the observers' own pictures from iNaturalist. They suit a colour panel; the list suits e-ink.",
+      "choices": [
+        {
+          "value": "list",
+          "label": "List"
+        },
+        {
+          "value": "photo",
+          "label": "Photo — one species"
+        },
+        {
+          "value": "gallery",
+          "label": "Gallery — photo grid"
+        }
+      ]
+    },
+    {
+      "name": "group",
+      "type": "select",
+      "label": "Group",
+      "default": "all",
+      "choices": [
+        {
+          "value": "all",
+          "label": "All wildlife"
+        },
+        {
+          "value": "birds",
+          "label": "Birds"
+        },
+        {
+          "value": "mammals",
+          "label": "Mammals"
+        },
+        {
+          "value": "insects",
+          "label": "Insects"
+        },
+        {
+          "value": "spiders",
+          "label": "Spiders"
+        },
+        {
+          "value": "plants",
+          "label": "Plants"
+        },
+        {
+          "value": "fungi",
+          "label": "Fungi"
+        },
+        {
+          "value": "reptiles",
+          "label": "Reptiles"
+        },
+        {
+          "value": "amphibians",
+          "label": "Amphibians"
+        },
+        {
+          "value": "fish",
+          "label": "Fish"
+        }
+      ]
+    },
+    {
+      "name": "radius_km",
+      "type": "select",
+      "label": "Radius",
+      "default": "15",
+      "choices": [
+        {
+          "value": "5",
+          "label": "5 km"
+        },
+        {
+          "value": "10",
+          "label": "10 km"
+        },
+        {
+          "value": "15",
+          "label": "15 km"
+        },
+        {
+          "value": "25",
+          "label": "25 km"
+        },
+        {
+          "value": "50",
+          "label": "50 km"
+        }
+      ]
+    },
+    {
+      "name": "count",
+      "type": "select",
+      "label": "How many species",
+      "default": "8",
+      "choices": [
+        {
+          "value": "5",
+          "label": "5"
+        },
+        {
+          "value": "8",
+          "label": "8"
+        },
+        {
+          "value": "10",
+          "label": "10"
+        },
+        {
+          "value": "14",
+          "label": "14"
+        }
+      ]
+    },
+    {
+      "name": "show_sci",
+      "type": "boolean",
+      "label": "Show scientific names",
+      "default": true
+    },
+    {
+      "name": "research_only",
+      "type": "boolean",
+      "label": "Verified identifications only",
+      "help": "iNaturalist's research grade: the identification has been confirmed by other people.",
+      "default": true
+    },
+    {
+      "name": "refresh_min",
+      "type": "select",
+      "label": "Refresh",
+      "default": "60",
+      "choices": [
+        {
+          "value": "30",
+          "label": "Every 30 min"
+        },
+        {
+          "value": "60",
+          "label": "Hourly"
+        },
+        {
+          "value": "180",
+          "label": "Every 3 hours"
+        },
+        {
+          "value": "720",
+          "label": "Twice a day"
+        }
+      ]
+    }
+  ],
+  "fragments": [
+    {
+      "id": "full",
+      "label": "Species list",
+      "w": 360,
+      "h": 240,
+      "icon": "ph-bird"
+    },
+    {
+      "id": "one",
+      "label": "Latest sighting",
+      "w": 200,
+      "h": 120,
+      "icon": "ph-binoculars"
+    }
+  ],
+  "data_schema": {
+    "fields": [
+      {
+        "name": "label",
+        "type": "str",
+        "label": "Location"
+      },
+      {
+        "name": "mode_label",
+        "type": "str",
+        "label": "Mode"
+      },
+      {
+        "name": "species_top",
+        "type": "str",
+        "label": "Top species"
+      },
+      {
+        "name": "shown",
+        "type": "num",
+        "label": "Species listed"
+      },
+      {
+        "name": "total_observations",
+        "type": "num",
+        "label": "Observations nearby"
+      },
+      {
+        "name": "radius_km",
+        "type": "num",
+        "label": "Radius (km)"
+      },
+      {
+        "name": "items",
+        "type": "arr",
+        "label": "Species"
+      }
+    ],
+    "sample": {
+      "label": "Mernda",
+      "lat": -37.635,
+      "lon": 145.095,
+      "radius_km": 15,
+      "mode": "recent",
+      "mode_label": "Recently spotted",
+      "group": "all",
+      "group_label": "All wildlife",
+      "research_only": true,
+      "items": [
+        {
+          "name": "Threeband Slugs",
+          "sci": "Ambigolimax",
+          "rank": "genus",
+          "group": "Mollusca",
+          "id": 448395,
+          "when": "2026-08-14",
+          "ago": "yesterday",
+          "by": "elliejhk",
+          "where": "Blanch St"
+        },
+        {
+          "name": "Tree Lucerne Moth",
+          "sci": "Uresiphita ornithopteralis",
+          "rank": "species",
+          "group": "Insecta",
+          "id": 328107,
+          "when": "2026-08-14",
+          "ago": "yesterday",
+          "by": "astrobirder",
+          "where": "Main Dr"
+        },
+        {
+          "name": "Yelloweye woodsorrel",
+          "sci": "Oxalis obtusa",
+          "rank": "species",
+          "group": "Plantae",
+          "id": 119468,
+          "when": "2026-08-14",
+          "ago": "yesterday",
+          "by": "astrobirder",
+          "where": "Main Dr"
+        },
+        {
+          "name": "Purple woodsorrel",
+          "sci": "Oxalis purpurea",
+          "rank": "species",
+          "group": "Plantae",
+          "id": 78301,
+          "when": "2026-08-14",
+          "ago": "yesterday",
+          "by": "astrobirder",
+          "where": "Main Dr"
+        },
+        {
+          "name": "Chestnut Teal",
+          "sci": "Anas castanea",
+          "rank": "species",
+          "group": "Aves",
+          "id": 6958,
+          "when": "2026-08-14",
+          "ago": "yesterday",
+          "by": "nellie9726",
+          "where": "Bundoora VIC 3083"
+        },
+        {
+          "name": "Little Pied Cormorant",
+          "sci": "Microcarbo melanoleucos",
+          "rank": "species",
+          "group": "Aves",
+          "id": 370351,
+          "when": "2026-08-14",
+          "ago": "yesterday",
+          "by": "nellie9726",
+          "where": "Bundoora VIC 3083"
+        },
+        {
+          "name": "Hop goodenia",
+          "sci": "Goodenia ovata",
+          "rank": "species",
+          "group": "Plantae",
+          "id": 323821,
+          "when": "2026-08-14",
+          "ago": "yesterday",
+          "by": "skyecielitaflor",
+          "where": "North Warrandyte"
+        },
+        {
+          "name": "False Sarsaparilla",
+          "sci": "Hardenbergia violacea",
+          "rank": "species",
+          "group": "Plantae",
+          "id": 210184,
+          "when": "2026-08-14",
+          "ago": "yesterday",
+          "by": "skyecielitaflor",
+          "where": "Stony Creek Rd/Research-Warrandyte Rd"
+        }
+      ],
+      "shown": 8,
+      "total_observations": 164861,
+      "species_top": "Threeband Slugs",
+      "groups_present": {
+        "Mollusca": 1,
+        "Insecta": 1,
+        "Plantae": 4,
+        "Aves": 2
+      },
+      "empty": false,
+      "fetched_at": 1786756232,
+      "date": "Sat 15 Aug"
+    }
+  }
+}
