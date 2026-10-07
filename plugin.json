@@ -1,7 +1,7 @@
 {
   "tesserae_compat": "1.x",
   "name": "Wildlife Nearby",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "kind": "widget",
   "description": "What has actually been seen around this panel: the species most often recorded nearby, or the ones spotted most recently, from iNaturalist's public observations. Filter by radius and by group — birds, mammals, insects, plants, fungi. No API key.",
   "icon": "ph-bird",

@@ -28,9 +28,10 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import date, datetime
+from datetime import date, datetime, tzinfo
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 API = "https://api.inaturalist.org/v1"
 # iNaturalist asks callers to identify themselves and holds you to 60 requests
@@ -87,14 +88,33 @@ def _title(s: str) -> str:
     return s[:1].upper() + s[1:] if s else ""
 
 
-def _ago(iso: str | None) -> str:
+def _location_tz(options: dict[str, Any]) -> tzinfo | None:
+    """IANA zone carried on the location option, or None for the server's.
+
+    Newer servers keep the geocoder's zone on the location dict (or promote
+    it to a top-level ``timezone``); older saved locations and pasted
+    coordinates have none. iNaturalist's ``observed_on`` is the local date
+    where the sighting happened, so "today" has to be that place's today."""
+    for value in (options.get("timezone"), options.get("location")):
+        if isinstance(value, dict):
+            value = value.get("timezone")
+        if not isinstance(value, str) or not value.strip():
+            continue
+        try:
+            return ZoneInfo(value.strip())
+        except (ValueError, KeyError, OSError):
+            continue
+    return None
+
+
+def _ago(iso: str | None, today: date | None = None) -> str:
     if not iso:
         return ""
     try:
         seen = date.fromisoformat(iso[:10])
     except ValueError:
         return ""
-    days = (date.today() - seen).days
+    days = ((today or date.today()) - seen).days
     if days <= 0:
         return "today"
     if days == 1:
@@ -167,7 +187,7 @@ def _entry(taxon: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _recent(base: str, want: int) -> tuple[list | None, str | None]:
+def _recent(base: str, want: int, today: date | None = None) -> tuple[list | None, str | None]:
     """Newest observations, one row per species.
 
     Over-fetches because a busy patch will report the same magpie a dozen times
@@ -185,7 +205,7 @@ def _recent(base: str, want: int) -> tuple[list | None, str | None]:
             continue
         row = _entry(taxon)
         row["when"] = obs.get("observed_on") or ""
-        row["ago"] = _ago(row["when"])
+        row["ago"] = _ago(row["when"], today)
         row["by"] = ((obs.get("user") or {}).get("login")) or ""
         row["where"] = _locality(obs.get("place_guess"))
         shot = _photo((obs.get("photos") or [None])[0])
@@ -253,6 +273,11 @@ def fetch(
     slug = hashlib.sha1(f"{base}|{mode}|{want}".encode()).hexdigest()[:12]
     cache = data_dir / f"result_{slug}.json"
 
+    # The location's calendar day, not the server's: a Berlin server showing
+    # Melbourne would otherwise call this morning's sightings "yesterday".
+    loc_now = datetime.now(_location_tz(options))
+    today = loc_now.date()
+
     now = int(time.time())
     if cache.exists() and now - int(cache.stat().st_mtime) < refresh_min * 60:
         with contextlib.suppress(OSError, json.JSONDecodeError):
@@ -261,11 +286,15 @@ def fetch(
                 # dates are relative, so they have to be recomputed on a cache hit
                 for row in cached.get("items", []):
                     if row.get("when"):
-                        row["ago"] = _ago(row["when"])
+                        row["ago"] = _ago(row["when"], today)
+                cached["date"] = loc_now.strftime("%a %d %b")
                 cached["label"] = label or cached.get("label", "")
                 return cached
 
-    items, err = (_recent if mode == "recent" else _common)(base, want)
+    if mode == "recent":
+        items, err = _recent(base, want, today)
+    else:
+        items, err = _common(base, want)
     if err or items is None:
         return {"error": err or ERR_UNREACHABLE, "label": label}
 
@@ -295,7 +324,7 @@ def fetch(
         "layout": str(options.get("layout") or "list"),
         "empty": not items,
         "fetched_at": now,
-        "date": datetime.now().strftime("%a %d %b"),
+        "date": loc_now.strftime("%a %d %b"),
     }
     with contextlib.suppress(OSError):
         cache.write_text(json.dumps(result), encoding="utf-8")

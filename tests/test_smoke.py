@@ -223,3 +223,31 @@ def test_cache_avoids_a_second_call_but_still_reages_the_dates(monkeypatch, tmp_
     # "yesterday" is relative, so a cached payload must not keep yesterday's word
     assert second["items"][0]["ago"] == first["items"][0]["ago"] == "yesterday"
     assert json.loads((tmp_path / next(p.name for p in tmp_path.iterdir())).read_text())
+
+
+# ----- location time --------------------------------------------------
+
+
+def test_today_is_the_locations_today(monkeypatch, tmp_path):
+    """A sighting dated the location's today reads "today" and the header
+    shows the location's date, whatever the server's own zone says."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    for zone in ("Pacific/Kiritimati", "Pacific/Pago_Pago"):   # UTC+14 and UTC-11
+        local_today = datetime.now(ZoneInfo(zone)).date()
+        obs = _obs("Corvus", "Raven", "Aves", 0)
+        obs["observed_on"] = local_today.isoformat()
+        _install(monkeypatch, {"/observations?": {"results": [obs], "total_results": 1}})
+        loc = {**MERNDA, "location": {"name": "Somewhere", "timezone": zone}}
+        out = server.fetch({**loc, "mode": "recent"}, {}, ctx={"data_dir": str(tmp_path / zone)})
+        assert out["items"][0]["ago"] == "today"
+        assert out["date"] == datetime.now(ZoneInfo(zone)).strftime("%a %d %b")
+        again = server.fetch({**loc, "mode": "recent"}, {}, ctx={"data_dir": str(tmp_path / zone)})
+        assert again["items"][0]["ago"] == "today"
+
+
+def test_location_zone_falls_back_to_the_server():
+    assert server._location_tz({}) is None
+    assert server._location_tz({"location": {"timezone": "Not/AZone"}}) is None
+    assert str(server._location_tz({"timezone": "Australia/Melbourne"})) == "Australia/Melbourne"
